@@ -2,7 +2,6 @@ package exporter
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/tidwall/gjson"
 	"io"
 	"log"
@@ -45,7 +44,7 @@ func EsInit(dumpInfo DumptInfo) {
 //错误异常处理
 func checkError(err error) {
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 }
@@ -59,7 +58,6 @@ func Read(r io.Reader) string {
 //从elaseticsearch中导出索引
 func Exporter(dumpInfo DumptInfo, ch chan string) {
 	EsInit(dumpInfo)
-	fmt.Println(dumpInfo)
 	log.Println("导出开始...")
 	//log.Println(strings.Repeat("-", 80))
 	res, err := Es.Search(
