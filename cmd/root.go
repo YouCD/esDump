@@ -36,7 +36,7 @@ var rootCmd = &cobra.Command{
 	没有账户认证：
 		esDump -i Output.txt -o http://127.0.0.1:9200/index -s 100
 		esDump -o Output.txt -i http://127.0.0.1:9200/index -s 100`,
-	Version: `v0.1`,
+	Version: `v0.1.1`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		if len(input) == 0 {
