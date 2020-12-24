@@ -1,13 +1,16 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"github.com/YouCD/esDump/exporter"
-	"github.com/YouCD/esDump/readFromFile"
 	"github.com/YouCD/esDump/importer"
-	"log"
+	"github.com/YouCD/esDump/readFromFile"
 	"github.com/YouCD/esDump/writeToFile"
-	"strings"
 	"github.com/spf13/cobra"
+	"log"
+	"net/url"
+	"strings"
 	//"github.com/spf13/viper"
 	"os"
 )
@@ -22,6 +25,13 @@ var (
 	user     string
 	password string
 	host     string
+
+	//version info
+	version   string
+	commitID  string
+	buildTime string
+	goVersion string
+	buildUser string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -36,7 +46,7 @@ var rootCmd = &cobra.Command{
 	没有账户认证：
 		esDump -i Output.txt -o http://127.0.0.1:9200/index -s 100
 		esDump -o Output.txt -i http://127.0.0.1:9200/index -s 100`,
-	Version: `v0.1.1`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 
 		if len(input) == 0 {
@@ -44,8 +54,12 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		if strings.Contains(input, "http:") {
-			parFlag(input)
+		if strings.Contains(input, "http://") {
+			err := parFlag(input)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 			dampinfo := exporter.DumptInfo{
 				user,
 				password,
@@ -54,10 +68,17 @@ var rootCmd = &cobra.Command{
 				size,
 			}
 			eschannel := make(chan string, size)
-			exporter.Exporter(dampinfo, eschannel)
+			err = exporter.Exporter(dampinfo, eschannel)
+			if err != nil {
+				return
+			}
 			writeToFile.WriteToFile(output, eschannel)
-		} else if strings.Contains(output, "http:") {
-			parFlag(output)
+		} else if strings.Contains(output, "http://") {
+			err := parFlag(output)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 			dampinfo := exporter.DumptInfo{
 				user,
 				password,
@@ -88,82 +109,43 @@ func init() {
 	rootCmd.Flags().StringVarP(&input, "input", "i", "", "es->file：http://root:root@127.0.0.1:9200/index;  file->es: 文件名")
 	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "es->file：每次获取数据量;                         file->es: size*10")
 	rootCmd.Flags().StringVarP(&output, "output", "o", "", "es->file：文件名;                                 file->es: http://root:root@127.0.0.1:9200/index")
-
+	rootCmd.AddCommand(versionCmd)
 }
 
-// 判断所给路径文件/文件夹是否存在
-func Exists(path string) bool {
-	_, err := os.Stat(path) //os.Stat获取文件信息
-	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
-		return false
-	}
-	return true
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number of esDump",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Version:   %s\n", version)
+		fmt.Printf("CommitID:  %s\n", commitID)
+		fmt.Printf("BuildTime: %s\n", buildTime)
+		fmt.Printf("GoVersion: %s\n", goVersion)
+		fmt.Printf("BuildUser: %s\n", buildUser)
+	},
 }
 
 //解析参数
-func parFlag(flag string) {
-
-	if strings.Contains(flag, "http://") && strings.Contains(flag, "@") && strings.Contains(flag, "/") {
-		//截取baseauth认证信息
-		uriAndUserinfo := strings.Split(flag, "@")[0]
-		userinfo := strings.Split(uriAndUserinfo, "//")[1]
-		//获取user
-		user = strings.Split(userinfo, ":")[0]
-		//获取密码
-		password = strings.Split(userinfo, ":")[1]
-		// 拼接url
-		uri := strings.Split(uriAndUserinfo, "/")[0]
-		host = uri + "//" + strings.Split(strings.Split(flag, "/")[2], "@")[1]
-		//获取index
-		index = strings.Split(flag, "/")[len(strings.Split(flag, "/"))-1]
-
-	} else if strings.Contains(flag, "@") == false {
-		// 拼接url
-		uri := strings.Split(flag, "/")[0]
-		host = uri + "//" + strings.Split(strings.Split(flag, "/")[2], "@")[0]
-		//获取index
-		index = strings.Split(flag, "/")[len(strings.Split(flag, "/"))-1]
-	} else {
-		log.Println("参数错误")
+func parFlag(flag string) (err error) {
+	u, err := url.Parse(flag)
+	if err != nil {
+		return err
 	}
-
+	p, hasPwd := u.User.Password()
+	if u.Scheme == "http" && hasPwd && p != "" {
+		user = u.User.Username()
+		password = p
+		host = u.Host
+	} else if !hasPwd {
+		return errors.New("Please enter password or check url format")
+	} else if p == "" {
+		return errors.New("Password can not be empty")
+	} else if u.Scheme != strings.ToUpper("HTTP") {
+		return errors.New("Only supports http protocol")
+	}
+	path := strings.Split(u.Path, "/")
+	if path[1] == "" {
+		return errors.New("Please enter the correct path")
+	}
+	index = path[1]
+	return nil
 }
-
-func main() {
-	flag := "http://172.0.0.1:9200/index"
-	parFlag(flag)
-}
-
-//func initFlag(flag string)bool  {
-//	if strings.ContainsAny(flag, "http")&&strings.ContainsAny(flag, "@")&&strings.ContainsAny(flag, "/"){
-//		parFlag(flag)
-//		return true
-//	}else {
-//		parFlag(flag)
-//		return false
-//	}
-//}
-//
-//
-
-//func initConfig() {
-//	if cfgFile != "" {
-//		viper.SetConfigFile(cfgFile)
-//	} else {
-//		home, err := homedir.Dir()
-//		if err != nil {
-//			fmt.Println(err)
-//			os.Exit(1)
-//		}
-//		viper.AddConfigPath(home)
-//		viper.SetConfigName(".demo")
-//	}
-//
-//	viper.AutomaticEnv()
-//	if err := viper.ReadInConfig(); err == nil {
-//		fmt.Println("Using config file:", viper.ConfigFileUsed())
-//	}
-//}

@@ -38,6 +38,7 @@ func lineCounter(filename string) (int, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
+		return 0, err
 	}
 	defer file.Close()
 	for {

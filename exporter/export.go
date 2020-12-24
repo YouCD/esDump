@@ -56,10 +56,9 @@ func Read(r io.Reader) string {
 }
 
 //从elaseticsearch中导出索引
-func Exporter(dumpInfo DumptInfo, ch chan string) {
+func Exporter(dumpInfo DumptInfo, ch chan string) (err error){
 	EsInit(dumpInfo)
 	log.Println("导出开始...")
-	//log.Println(strings.Repeat("-", 80))
 	res, err := Es.Search(
 		Es.Search.WithIndex(dumpInfo.Index),
 		Es.Search.WithSort("_doc"),
@@ -67,8 +66,10 @@ func Exporter(dumpInfo DumptInfo, ch chan string) {
 		Es.Search.WithScroll(time.Minute),
 	)
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
+		return err
 	}
+
 	//先做查询初始化并获取scrollID
 	json := Read(res.Body)
 	defer res.Body.Close()
@@ -107,7 +108,6 @@ func Exporter(dumpInfo DumptInfo, ch chan string) {
 
 			//没有结果时跳出循环
 			if len(hits.Array()) < 1 {
-
 				break
 			} else {
 				//遍历每次查询结果得到一条数据并推送至管道
@@ -118,4 +118,5 @@ func Exporter(dumpInfo DumptInfo, ch chan string) {
 		}
 		close(ch)
 	}()
+	return nil
 }
