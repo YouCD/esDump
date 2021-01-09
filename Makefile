@@ -8,7 +8,7 @@ GO_VERSION      :=$(shell $(GOCMD) version)
 VERSION			:=$(shell git describe --tags)
 BUILD_USER		:=$(shell whoami)
 PACKAGES_URL	:=$(github.com/YouCD/esDump)
-FLAG			:="-X '${IMPORT_PATH}.buildTime=${BUILD_TIME}' -X '${IMPORT_PATH}.commitID=${COMMIT_ID}' -X '${IMPORT_PATH}.goVersion=${GO_VERSION}' -X '${IMPORT_PATH}.goVersion=${GO_VERSION}' -X '${IMPORT_PATH}.version=${VERSION}' -X '${IMPORT_PATH}.buildUser=${BUILD_USER}'"
+FLAG			:="-X '${IMPORT_PATH}.buildTime=${BUILD_TIME}' -X '${IMPORT_PATH}.commitID=${COMMIT_ID}' -X '${IMPORT_PATH}.goVersion=${GO_VERSION}' -X '${IMPORT_PATH}.goVersion=${GO_VERSION}' -X '${IMPORT_PATH}.Version=${VERSION}' -X '${IMPORT_PATH}.buildUser=${BUILD_USER}'"
 
 BINARY_DIR=bin
 BINARY_NAME:=esDump

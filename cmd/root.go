@@ -19,12 +19,7 @@ var (
 
 	size int
 
-	//version info
-	version   string
-	commitID  string
-	buildTime string
-	goVersion string
-	buildUser string
+
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -93,6 +88,7 @@ func init() {
 	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "size*10，默认100即可")
 	rootCmd.Flags().StringVarP(&output, "output", "o", "", "output 输出源")
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(updateCmd)
 }
 
 //解析参数
