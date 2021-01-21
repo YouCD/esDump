@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 	"io"
@@ -14,7 +15,9 @@ import (
 )
 
 var (
-	path string
+	path             string
+	Force            bool
+	GitHubReleaseUrl = "https://api.github.com/repos/youcd/esDump/releases/latest"
 )
 
 type ReleaseVersion struct {
@@ -23,10 +26,12 @@ type ReleaseVersion struct {
 	DownloadUrl string `json:"download_url"`
 }
 
+func init() {
+	updateCmd.Flags().BoolVarP(&Force, "force", "f", false, "force updating.")
+}
 func GetRelease(OS string) (v ReleaseVersion) {
 
-	s := "https://api.github.com/repos/youcd/esDump/releases/latest"
-	resp, err := http.Get(s)
+	resp, err := http.Get(GitHubReleaseUrl)
 	if err != nil {
 		log.Println(err)
 	}
@@ -67,7 +72,6 @@ func GetRelease(OS string) (v ReleaseVersion) {
 	return v
 }
 
-
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "update the WorkReport server",
@@ -78,12 +82,19 @@ var updateCmd = &cobra.Command{
 		//系统类型
 		OS := runtime.GOOS
 		v := GetRelease(OS)
-		if Version != v.TagName {
+		if Force {
 			path, _ = os.Executable()
 			DownloadFileProgress(v.DownloadUrl, path+".tmp")
+			return
+		} else if Version != v.TagName {
+			path, _ = os.Executable()
+			DownloadFileProgress(v.DownloadUrl, path+".tmp")
+
 		} else {
-			log.Println(fmt.Sprintf("version: %s. The current version is the latest version.", Version))
+			log.Println(fmt.Sprintf("version: %s. The version is latest version.", Version))
+			return
 		}
+
 	},
 }
 
@@ -91,13 +102,6 @@ type Reader struct {
 	io.Reader
 	Total   int64
 	Current int64
-}
-
-func (r *Reader) Read(p []byte) (n int, err error) {
-	n, err = r.Reader.Read(p)
-	r.Current += int64(n)
-	log.Printf("\r进度 %.2f%%", float64(r.Current*10000/r.Total)/100)
-	return
 }
 
 func DownloadFileProgress(url, filename string) {
@@ -112,13 +116,10 @@ func DownloadFileProgress(url, filename string) {
 	if err != nil {
 		panic(err)
 	}
-	if err != nil {
-		panic(err)
-	}
 	defer func() { _ = f.Close() }()
-	reader := &Reader{
-		Reader: r.Body,
-		Total:  r.ContentLength,
-	}
-	_, _ = io.Copy(f, reader)
+	bar := progressbar.DefaultBytes(
+		r.ContentLength,
+		"下载中",
+	)
+	io.Copy(io.MultiWriter(f, bar), r.Body)
 }
