@@ -16,10 +16,9 @@ import (
 var (
 	output string
 	input  string
+	query  string
 
 	size int
-
-
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -28,14 +27,15 @@ var rootCmd = &cobra.Command{
 	Short: "elasticsearch索引导出器",
 	Long:  `esDump 是golang编写的一个elasticsearch索引导出器`,
 	Example: `	账户认证：
-        从ES中导出到文件中
-		esDump -i http://root:root@127.0.0.1:9200/index -o Output.txt -s 100
-		从文件中导出到ES中
-		esDump -i Output.txt -o http://root:root@127.0.0.1:9200/index -s 100
+                从ES中导出到文件
+			esDump -i http://root:root@127.0.0.1:9200/index -o Output.txt -s 100 
+		从文件导入到ES中
+			esDump -i Output.txt -o http://root:root@127.0.0.1:9200/index -s 100
 
 	没有账户认证：
 		esDump -i Output.txt -o http://127.0.0.1:9200/index -s 100
 		esDump -o Output.txt -i http://127.0.0.1:9200/index -s 100`,
+
 
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -87,6 +87,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&input, "input", "i", "", "input 输入源")
 	rootCmd.Flags().IntVarP(&size, "size", "s", 100, "size*10，默认100即可")
 	rootCmd.Flags().StringVarP(&output, "output", "o", "", "output 输出源")
+	rootCmd.Flags().StringVarP(&query, "query", "q", "", "query 查询")
+
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(updateCmd)
 }
@@ -97,6 +99,9 @@ func parFlag(urlStr string) (dumpInfo *esHandler.DumpInfo, err error) {
 	u, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
+	}
+	if query != "" {
+		dumpInfoTemp.Query = query
 	}
 	dumpInfoTemp.Size = size * 10
 	dumpInfoTemp.Host = "http://" + u.Host

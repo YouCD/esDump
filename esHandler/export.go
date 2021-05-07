@@ -2,6 +2,7 @@ package esHandler
 
 import (
 	"bytes"
+	"github.com/elastic/go-elasticsearch/v6/esapi"
 
 	"github.com/tidwall/gjson"
 	"io"
@@ -24,6 +25,7 @@ type DumpInfo struct {
 	Host     string
 	Index    string
 	Size     int
+	Query   string
 }
 
 func EsInit(dumpInfo DumpInfo) {
@@ -63,16 +65,29 @@ func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 
 	EsInit(*dumpInfo)
 	log.Println("导出开始...")
-	res, err := Es.Search(
-		Es.Search.WithIndex(dumpInfo.Index),
-		Es.Search.WithSort("_doc"),
-		Es.Search.WithSize(dumpInfo.Size),
-		Es.Search.WithScroll(time.Minute),
-	)
-	if err != nil {
-		return err
+	var res *esapi.Response
+	if dumpInfo.Query!=""{
+		res, err = Es.Search(
+			Es.Search.WithIndex(dumpInfo.Index),
+			Es.Search.WithSort("_doc"),
+			Es.Search.WithSize(dumpInfo.Size),
+			Es.Search.WithScroll(time.Minute),
+			Es.Search.WithQuery(dumpInfo.Query),
+		)
+		if err != nil {
+			return err
+		}
+	}else{
+		res, err = Es.Search(
+			Es.Search.WithIndex(dumpInfo.Index),
+			Es.Search.WithSort("_doc"),
+			Es.Search.WithSize(dumpInfo.Size),
+			Es.Search.WithScroll(time.Minute),
+		)
+		if err != nil {
+			return err
+		}
 	}
-
 	//先做查询初始化并获取scrollID
 	json := Read(res.Body)
 	defer res.Body.Close()
