@@ -74,7 +74,7 @@ func GetRelease(OS string) (v ReleaseVersion) {
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "update the WorkReport server",
+	Short:  fmt.Sprintf("update the %s server",name),
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		os.Rename(path+".tmp", path)
 	},

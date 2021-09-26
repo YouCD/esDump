@@ -11,10 +11,11 @@ var (
 	buildTime string
 	goVersion string
 	buildUser string
+	name ="esDump"
 )
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version number of esDump",
+	Short: fmt.Sprintf("Print the version number of %s",name),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Version:   %s\n", Version)
 		fmt.Printf("CommitID:  %s\n", commitID)

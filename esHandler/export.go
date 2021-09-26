@@ -2,7 +2,9 @@ package esHandler
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v6/esapi"
+	"strings"
 
 	"github.com/tidwall/gjson"
 	"io"
@@ -25,7 +27,8 @@ type DumpInfo struct {
 	Host     string
 	Index    string
 	Size     int
-	Query   string
+	Query    string
+	ExistsFilter string
 }
 
 func EsInit(dumpInfo DumpInfo) {
@@ -60,13 +63,14 @@ func Read(r io.Reader) string {
 	return b.String()
 }
 
-//从elasticsearch中导出索引
+// Exporter 从elasticsearch中导出索引
 func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 
 	EsInit(*dumpInfo)
 	log.Println("导出开始...")
 	var res *esapi.Response
-	if dumpInfo.Query!=""{
+	switch  {
+	case dumpInfo.Query != ""&&dumpInfo.ExistsFilter=="":
 		res, err = Es.Search(
 			Es.Search.WithIndex(dumpInfo.Index),
 			Es.Search.WithSort("_doc"),
@@ -77,7 +81,7 @@ func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 		if err != nil {
 			return err
 		}
-	}else{
+	case dumpInfo.Query == ""&&dumpInfo.ExistsFilter=="":
 		res, err = Es.Search(
 			Es.Search.WithIndex(dumpInfo.Index),
 			Es.Search.WithSort("_doc"),
@@ -87,7 +91,21 @@ func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 		if err != nil {
 			return err
 		}
+	case dumpInfo.ExistsFilter!="":
+		res, err = Es.Search(
+			Es.Search.WithIndex(dumpInfo.Index),
+			Es.Search.WithSort("_doc"),
+			Es.Search.WithSize(dumpInfo.Size),
+			Es.Search.WithScroll(time.Minute),
+			Es.Search.WithBody(strings.NewReader(fmt.Sprintf(`{"query":{"exists":{"field":"%s"}}}`,dumpInfo.ExistsFilter))),
+		)
+		if err != nil {
+			return err
+		}
 	}
+
+
+
 	//先做查询初始化并获取scrollID
 	json := Read(res.Body)
 	defer res.Body.Close()
