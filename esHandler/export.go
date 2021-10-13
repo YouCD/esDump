@@ -17,7 +17,6 @@ import (
 
 var (
 	scrollID string
-	batchNum int
 	Es       *elasticsearch.Client
 )
 
@@ -67,7 +66,6 @@ func Read(r io.Reader) string {
 func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 
 	EsInit(*dumpInfo)
-	log.Println("导出开始...")
 	var res *esapi.Response
 	switch  {
 	case dumpInfo.Query != ""&&dumpInfo.ExistsFilter=="":

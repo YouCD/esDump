@@ -5,7 +5,6 @@ import (
 	"github.com/spf13/cobra"
 )
 var (
-	//version info
 	Version   string
 	commitID  string
 	buildTime string
