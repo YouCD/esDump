@@ -24,26 +24,6 @@ var (
 	GitHubReleaseUrl = "https://api.github.com/repos/youcd/esDump/releases"
 )
 
-type author struct {
-	Login             string `json:"login"`
-	ID                int    `json:"id"`
-	NodeID            string `json:"node_id"`
-	AvatarURL         string `json:"avatar_url"`
-	GravatarID        string `json:"gravatar_id"`
-	URL               string `json:"url"`
-	HTMLURL           string `json:"html_url"`
-	FollowersURL      string `json:"followers_url"`
-	FollowingURL      string `json:"following_url"`
-	GistsURL          string `json:"gists_url"`
-	StarredURL        string `json:"starred_url"`
-	SubscriptionsURL  string `json:"subscriptions_url"`
-	OrganizationsURL  string `json:"organizations_url"`
-	ReposURL          string `json:"repos_url"`
-	EventsURL         string `json:"events_url"`
-	ReceivedEventsURL string `json:"received_events_url"`
-	Type              string `json:"type"`
-	SiteAdmin         bool   `json:"site_admin"`
-}
 type uploader struct {
 	Login             string `json:"login"`
 	ID                int    `json:"id"`
@@ -81,24 +61,8 @@ type assets struct {
 	BrowserDownloadURL string    `json:"browser_download_url"`
 }
 type GithubRelease struct {
-	//URL             string      `json:"url"`
-	//AssetsURL       string      `json:"assets_url"`
-	//UploadURL       string      `json:"upload_url"`
-	//HTMLURL         string      `json:"html_url"`
-	//ID              int         `json:"id"`
-	//Author          author      `json:"author"`
-	//NodeID          string      `json:"node_id"`
-	TagName string `json:"tag_name"`
-	//TargetCommitish string      `json:"target_commitish"`
-	//Name            interface{} `json:"name"`
-	//Draft           bool        `json:"draft"`
-	//Prerelease      bool        `json:"prerelease"`
-	//CreatedAt       time.Time   `json:"created_at"`
-	//PublishedAt     time.Time   `json:"published_at"`
-	Assets []assets `json:"assets"`
-	//TarballURL      string      `json:"tarball_url"`
-	//ZipballURL      string      `json:"zipball_url"`
-	//Body            interface{} `json:"body"`
+	TagName string   `json:"tag_name"`
+	Assets  []assets `json:"assets"`
 }
 
 type ReleaseVersion struct {
@@ -139,14 +103,6 @@ func GetRelease(OS string) (v ReleaseVersion) {
 			ReleaseVersions = append(ReleaseVersions, r)
 		}
 	}
-	//count := gjson.Get(string(bytes), "assets.#").Int()
-
-	//for i := 0; i < int(count); i++ {
-	//	v.TagName = gjson.Get(string(bytes), "tag_name").Str
-	//	v.SwName = gjson.Get(string(bytes), fmt.Sprintf("assets.%d.name", i)).Str
-	//	v.DownloadUrl = gjson.Get(string(bytes), fmt.Sprintf("assets.%d.browser_download_url", i)).Str
-	//	vList = append(vList, v)
-	//}
 	switch OS {
 	case "linux":
 		return getReleaseVersion(ReleaseVersions, "linux")
