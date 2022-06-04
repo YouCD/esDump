@@ -1,18 +1,19 @@
-package esHandler
+package es
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v6/esapi"
-	"strings"
-
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v6"
+	"github.com/elastic/go-elasticsearch/v8"
 )
 
 var (
@@ -27,16 +28,21 @@ type DumpInfo struct {
 	Index    string
 	Size     int
 	Query    string
-	ExistsFilter string
+	Complex  bool
+	Version  string
 }
 
-func EsInit(dumpInfo DumpInfo) {
+func EsInit(dumpInfo *DumpInfo) {
 	var err error
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	config := elasticsearch.Config{}
 	if dumpInfo.User != "" && dumpInfo.Password != "" {
 		config.Addresses = []string{dumpInfo.Host}
 		config.Username = dumpInfo.User
 		config.Password = dumpInfo.Password
+		config.Transport = tr
 		Es, err = elasticsearch.NewClient(config)
 		if err != nil {
 			log.Println(err)
@@ -65,21 +71,33 @@ func Read(r io.Reader) string {
 // Exporter 从elasticsearch中导出索引
 func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 
-	EsInit(*dumpInfo)
+	EsInit(dumpInfo)
 	var res *esapi.Response
-	switch  {
-	case dumpInfo.Query != ""&&dumpInfo.ExistsFilter=="":
+	switch {
+	case dumpInfo.Query != "" && dumpInfo.Complex == false:
 		res, err = Es.Search(
 			Es.Search.WithIndex(dumpInfo.Index),
 			Es.Search.WithSort("_doc"),
 			Es.Search.WithSize(dumpInfo.Size),
 			Es.Search.WithScroll(time.Minute),
-			Es.Search.WithQuery(dumpInfo.Query),
+			Es.Search.WithQuery(fmt.Sprintf(`%s`, dumpInfo.Query)),
+		)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	case dumpInfo.Query != "" && dumpInfo.Complex:
+		res, err = Es.Search(
+			Es.Search.WithIndex(dumpInfo.Index),
+			Es.Search.WithSort("_doc"),
+			Es.Search.WithSize(dumpInfo.Size),
+			Es.Search.WithScroll(time.Minute),
+			Es.Search.WithBody(strings.NewReader(fmt.Sprintf(`%s`, dumpInfo.Query))),
 		)
 		if err != nil {
 			return err
 		}
-	case dumpInfo.Query == ""&&dumpInfo.ExistsFilter=="":
+	case dumpInfo.Query == "":
 		res, err = Es.Search(
 			Es.Search.WithIndex(dumpInfo.Index),
 			Es.Search.WithSort("_doc"),
@@ -89,20 +107,8 @@ func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 		if err != nil {
 			return err
 		}
-	case dumpInfo.ExistsFilter!="":
-		res, err = Es.Search(
-			Es.Search.WithIndex(dumpInfo.Index),
-			Es.Search.WithSort("_doc"),
-			Es.Search.WithSize(dumpInfo.Size),
-			Es.Search.WithScroll(time.Minute),
-			Es.Search.WithBody(strings.NewReader(fmt.Sprintf(`{"query":{"exists":{"field":"%s"}}}`,dumpInfo.ExistsFilter))),
-		)
-		if err != nil {
-			return err
-		}
+
 	}
-
-
 
 	//先做查询初始化并获取scrollID
 	json := Read(res.Body)
