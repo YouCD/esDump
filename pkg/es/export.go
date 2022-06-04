@@ -2,61 +2,19 @@ package es
 
 import (
 	"bytes"
-	"crypto/tls"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/elastic/go-elasticsearch/v8"
 )
 
 var (
 	scrollID string
-	Es       *elasticsearch.Client
 )
-
-type DumpInfo struct {
-	User     string
-	Password string
-	Host     string
-	Index    string
-	Size     int
-	Query    string
-	Complex  bool
-	Version  string
-}
-
-func EsInit(dumpInfo *DumpInfo) {
-	var err error
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	config := elasticsearch.Config{}
-	if dumpInfo.User != "" && dumpInfo.Password != "" {
-		config.Addresses = []string{dumpInfo.Host}
-		config.Username = dumpInfo.User
-		config.Password = dumpInfo.Password
-		config.Transport = tr
-		Es, err = elasticsearch.NewClient(config)
-		if err != nil {
-			log.Println(err)
-			os.Exit(1)
-		}
-	} else if dumpInfo.User == "" && dumpInfo.Password == "" {
-		config.Addresses = []string{dumpInfo.Host}
-		Es, err = elasticsearch.NewClient(config)
-		if err != nil {
-			log.Println(err)
-			os.Exit(1)
-		}
-	}
-}
 
 func Read(r io.Reader) string {
 	var b bytes.Buffer
@@ -69,40 +27,38 @@ func Read(r io.Reader) string {
 }
 
 // Exporter 从elasticsearch中导出索引
-func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
-
-	EsInit(dumpInfo)
+func (e *esDump) Exporter(ch chan string) (err error) {
 	var res *esapi.Response
 	switch {
-	case dumpInfo.Query != "" && dumpInfo.Complex == false:
-		res, err = Es.Search(
-			Es.Search.WithIndex(dumpInfo.Index),
-			Es.Search.WithSort("_doc"),
-			Es.Search.WithSize(dumpInfo.Size),
-			Es.Search.WithScroll(time.Minute),
-			Es.Search.WithQuery(fmt.Sprintf(`%s`, dumpInfo.Query)),
+	case e.query != "" && e.complex == false:
+		res, err = e.Client.Search(
+			e.Client.Search.WithIndex(e.index),
+			e.Client.Search.WithSort("_doc"),
+			e.Client.Search.WithSize(e.size),
+			e.Client.Search.WithScroll(time.Minute),
+			e.Client.Search.WithQuery(fmt.Sprintf(`%s`, e.query)),
 		)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
-	case dumpInfo.Query != "" && dumpInfo.Complex:
-		res, err = Es.Search(
-			Es.Search.WithIndex(dumpInfo.Index),
-			Es.Search.WithSort("_doc"),
-			Es.Search.WithSize(dumpInfo.Size),
-			Es.Search.WithScroll(time.Minute),
-			Es.Search.WithBody(strings.NewReader(fmt.Sprintf(`%s`, dumpInfo.Query))),
+	case e.query != "" && e.complex:
+		res, err = e.Client.Search(
+			e.Client.Search.WithIndex(e.index),
+			e.Client.Search.WithSort("_doc"),
+			e.Client.Search.WithSize(e.size),
+			e.Client.Search.WithScroll(time.Minute),
+			e.Client.Search.WithBody(strings.NewReader(fmt.Sprintf(`%s`, e.query))),
 		)
 		if err != nil {
 			return err
 		}
-	case dumpInfo.Query == "":
-		res, err = Es.Search(
-			Es.Search.WithIndex(dumpInfo.Index),
-			Es.Search.WithSort("_doc"),
-			Es.Search.WithSize(dumpInfo.Size),
-			Es.Search.WithScroll(time.Minute),
+	case e.query == "":
+		res, err = e.Client.Search(
+			e.Client.Search.WithIndex(e.index),
+			e.Client.Search.WithSort("_doc"),
+			e.Client.Search.WithSize(e.size),
+			e.Client.Search.WithScroll(time.Minute),
 		)
 		if err != nil {
 			return err
@@ -129,7 +85,7 @@ func Exporter(dumpInfo *DumpInfo, ch chan string) (err error) {
 		}
 		for {
 			//执行滚动请求并传递scrollID和滚动持续时间
-			res, err := Es.Scroll(Es.Scroll.WithScrollID(scrollID), Es.Scroll.WithScroll(time.Minute))
+			res, err := e.Client.Scroll(e.Client.Scroll.WithScrollID(scrollID), e.Client.Scroll.WithScroll(time.Minute))
 			if err != nil {
 				log.Fatalf("Error: %s", err)
 			}

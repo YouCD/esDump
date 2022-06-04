@@ -3,13 +3,10 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	es2 "github.com/YouCD/esDump/pkg/es"
+	"github.com/YouCD/esDump/pkg/es"
+	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	"log"
-	"net/url"
-	"strings"
-
-	"github.com/spf13/cobra"
 
 	"os"
 )
@@ -55,14 +52,11 @@ var rootCmd = &cobra.Command{
 			_ = cmd.Help()
 			return
 		}
-		dumpInfo, err := parFlag(endpoint)
-		if err != nil {
-			log.Println(err)
-			os.Exit(1)
-			return
-		}
-		if dumpInfo == nil {
-			log.Println("参数解析失败，不支持的endpoint")
+
+		esDump := es.NewEsDump(endpoint, query, size, complexFlag)
+
+		if esDump == nil {
+			log.Println("初始化失败")
 			os.Exit(1)
 			return
 		}
@@ -80,14 +74,13 @@ var rootCmd = &cobra.Command{
 					}
 					close(esChannel)
 				}
-
 			}()
 
-			es2.PipeImporter(dumpInfo, esChannel)
+			esDump.PipeImporter(esChannel)
 			log.Println("导入完成")
 		default:
 			esChannel := make(chan string, size)
-			err = es2.Exporter(dumpInfo, esChannel)
+			err := esDump.Exporter(esChannel)
 			if err != nil {
 				log.Println(err)
 				os.Exit(1)
@@ -96,7 +89,6 @@ var rootCmd = &cobra.Command{
 			for i := range esChannel {
 				fmt.Println(i)
 			}
-
 		}
 	},
 }
@@ -106,47 +98,4 @@ func Execute() {
 		log.Println(err)
 		os.Exit(1)
 	}
-}
-
-//parFlag 解析参数
-func parFlag(urlStr string) (dumpInfo *es2.DumpInfo, err error) {
-	dumpInfo = new(es2.DumpInfo)
-	u, err := url.Parse(urlStr)
-	if err != nil {
-		return nil, err
-	}
-	if query != "" {
-		dumpInfo.Query = query
-	}
-
-	dumpInfo.Size = size * 10
-
-	passwordStr, hasPwd := u.User.Password()
-	if hasPwd {
-		if passwordStr == "" {
-			log.Println("password can not be empty.")
-			os.Exit(1)
-		}
-		dumpInfo.Password = passwordStr
-		dumpInfo.User = u.User.Username()
-	}
-
-	path := strings.Split(u.Path, "/")
-	if path[1] == "" {
-		log.Println("index can not be empty.")
-		os.Exit(1)
-	}
-	dumpInfo.Index = path[1]
-	dumpInfo.Complex = complexFlag
-
-	switch {
-	case strings.ToUpper(u.Scheme) == "HTTPS":
-		dumpInfo.Host = u.Scheme + "://" + u.Host
-	case strings.ToUpper(u.Scheme) == "HTTP":
-		dumpInfo.Host = u.Scheme + "://" + u.Host
-	default:
-		log.Println("only support http or https protocol")
-		os.Exit(1)
-	}
-	return
 }

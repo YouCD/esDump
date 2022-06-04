@@ -3,7 +3,6 @@ package es
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/tidwall/gjson"
 	"log"
 	"os"
@@ -44,10 +43,8 @@ func MetaData(str string) (mate, data []byte) {
 	return
 }
 
-func PipeImporter(dumpInfo *DumpInfo, ch chan string) {
-	EsInit(dumpInfo)
+func (e *esDump) PipeImporter(ch chan string) {
 	var buf bytes.Buffer
-	fmt.Println(dumpInfo)
 	i := 0
 	batch := 0
 	for {
@@ -61,9 +58,9 @@ func PipeImporter(dumpInfo *DumpInfo, ch chan string) {
 					buf.Write(d)
 				}
 				i++
-				if i == dumpInfo.Size {
+				if i == e.size {
 					batch++
-					res, err := Es.Bulk(bytes.NewReader(buf.Bytes()), Es.Bulk.WithIndex(dumpInfo.Index))
+					res, err := e.Client.Bulk(bytes.NewReader(buf.Bytes()), e.Client.Bulk.WithIndex(e.index))
 					if err != nil {
 						log.Panic(err)
 					}
@@ -83,7 +80,7 @@ func PipeImporter(dumpInfo *DumpInfo, ch chan string) {
 
 			if !ok {
 				batch++
-				res, err := Es.Bulk(bytes.NewReader(buf.Bytes()), Es.Bulk.WithIndex(dumpInfo.Index))
+				res, err := e.Client.Bulk(bytes.NewReader(buf.Bytes()), e.Client.Bulk.WithIndex(e.index))
 				if err != nil {
 					log.Panic(err)
 				}
