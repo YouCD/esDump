@@ -24,7 +24,7 @@ build-linux:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags $(FLAG) -o $(BINARY_DIR)/$(BINARY_NAME)-linux-amd64/$(BINARY_NAME)
 
 build:
-	@CGO_ENABLED=0 GOOS=$(OS) GOARCH=amd64   go build -o $(BINARY_DIR)/$(BINARY_NAME)
+	@CGO_ENABLED=0 GOOS=$(OS) GOARCH=amd64 $(GOBUILD) -ldflags $(FLAG) -o $(BINARY_DIR)/$(BINARY_NAME)
 # 全平台
 build-all:
 	make build-darwin
